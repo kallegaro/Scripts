@@ -29,6 +29,10 @@ cd linux
 export ARCH=arm
 export KERNEL=kernel
 export CROSS_COMPILE=$HOME/dev_tools/rpi-tools/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin/arm-linux-gnueabihf-
+export CC=$HOME/dev_tools/rpi-tools/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin/arm-linux-gnueabihf-
+export RPI_SYSROOT=$PWD/../rootfs
+
+
 
 if [ ! -f "patch-4.1.20-rt23.patch.gz" ]; then
 	echo "Downloading kernel rt patch"
@@ -71,12 +75,26 @@ sudo su -c "cp linux/arch/arm/boot/Image rootfs/boot/kernel.img"
 sudo su -c "cp linux/arch/arm/boot/dts/bcm2708-rpi-b.dtb rootfs/boot/bcm2708-rpi-b.dtb"
 sudo su -c "cp linux/arch/arm/boot/dts/bcm2708-rpi-b-plus.dtb rootfs/boot/bcm2708-rpi-b-plus.dtb"
 
-echo "\n#### Inserting QT Inside the image rootfs ####"
-echo "#### Getting the base QT5 repository ####"
-#git clone git://code.qt.io/qt/qt5.git
-#cd qt5
-#./init-repository --module-subset=qtbase
-#cd ..
+echo "Making the QT for the RPI 1 Arch linux"
+
+if [ ! -d "qt5" ]; then
+	echo "Downloading the qt5 from source"
+	git clone git://code.qt.io/qt/qt5.git
+	cd qt5
+	./init-repository --module-subset=qtbase
+else
+	echo "Going to QT Folder and compiling it"
+	cd qt5
+fi
+
+cd qtbase
+
+sudo ./configure -opengl es2 -device linux-rasp-pi-g++ -device-option CROSS_COMPILE=$CC -sysroot $RPI_SYSROOT -opensource -confirm-license -optimized-qmake -reduce-exports -release -make libs -prefix /usr/local/qt5pi -skip qtwebkit -v
+
+sudo make -j3
+sudo make install
+
+cd ../..
 
 cd rootfs
 sudo su -c "tar -cpvzf ../arch_linux_rasp-$(raspberryPIModel)_preemptRTKernel.tar.gz *"
